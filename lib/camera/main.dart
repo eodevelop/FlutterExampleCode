@@ -272,6 +272,9 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
 
   /// Display the thumbnail of the captured image or video.
   Widget _thumbnailWidget() {
+    ///---------------------------------------------------------------------------
+    /// 촬영된 이미지나 비디오의 썸네일 표시 위젯
+    ///---------------------------------------------------------------------------
     final VideoPlayerController? localVideoController = videoController;
 
     return Expanded(
@@ -289,10 +292,8 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
                 child:
                     (localVideoController == null)
                         ? (
-                        // The captured image on the web contains a network-accessible URL
-                        // pointing to a location within the browser. It may be displayed
-                        // either with Image.network or Image.memory after loading the image
-                        // bytes to memory.
+                        // 웹에서는 이미지 URL이 브라우저 내부를 가리키는 네트워크 URL임
+                        // Image.network 또는 메모리에 이미지 바이트를 로드한 후 Image.memory로 표시 가능
                         kIsWeb
                             ? Image.network(imageFile!.path)
                             : Image.file(File(imageFile!.path)))
@@ -317,6 +318,9 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
 
   /// Display a bar with buttons to change the flash and exposure modes
   Widget _modeControlRowWidget() {
+    ///---------------------------------------------------------------------------
+    /// 플래시, 노출, 포커스 모드 변경 버튼이 있는 컨트롤 바 위젯
+    ///---------------------------------------------------------------------------
     return Column(
       children: <Widget>[
         Row(
@@ -327,7 +331,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
               color: Colors.blue,
               onPressed: controller != null ? onFlashModeButtonPressed : null,
             ),
-            // The exposure and focus mode are currently not supported on the web.
+            // 웹에서는 현재 노출 및 포커스 모드가 지원되지 않음
             ...!kIsWeb
                 ? <Widget>[
                   IconButton(
@@ -371,6 +375,9 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
   }
 
   Widget _flashModeControlRowWidget() {
+    ///---------------------------------------------------------------------------
+    /// 플래시 모드 선택 UI 위젯 (off, auto, always, torch 모드)
+    ///---------------------------------------------------------------------------
     return SizeTransition(
       sizeFactor: _flashModeControlRowAnimation,
       child: ClipRect(
@@ -381,7 +388,8 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
               icon: const Icon(Icons.flash_off),
               color:
                   controller?.value.flashMode == FlashMode.off
-                      ? Colors.orange
+                      ? Colors
+                          .orange // 선택된 모드는 주황색으로 표시
                       : Colors.blue,
               onPressed:
                   controller != null
@@ -428,10 +436,14 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
   }
 
   Widget _exposureModeControlRowWidget() {
+    ///---------------------------------------------------------------------------
+    /// 노출 모드 및 노출 오프셋 조절 UI 위젯
+    ///---------------------------------------------------------------------------
     final ButtonStyle styleAuto = TextButton.styleFrom(
       foregroundColor:
           controller?.value.exposureMode == ExposureMode.auto
-              ? Colors.orange
+              ? Colors
+                  .orange // 선택된 모드는 주황색으로 표시
               : Colors.blue,
     );
     final ButtonStyle styleLocked = TextButton.styleFrom(
@@ -461,6 +473,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
                             )
                             : null,
                     onLongPress: () {
+                      // 길게 누르면 노출 지점 초기화
                       if (controller != null) {
                         controller!.setExposurePoint(null);
                         showInSnackBar('Resetting exposure point');
@@ -515,10 +528,14 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
   }
 
   Widget _focusModeControlRowWidget() {
+    ///---------------------------------------------------------------------------
+    /// 포커스 모드 선택 UI 위젯 (자동, 고정 모드)
+    ///---------------------------------------------------------------------------
     final ButtonStyle styleAuto = TextButton.styleFrom(
       foregroundColor:
           controller?.value.focusMode == FocusMode.auto
-              ? Colors.orange
+              ? Colors
+                  .orange // 선택된 모드는 주황색으로 표시
               : Colors.blue,
     );
     final ButtonStyle styleLocked = TextButton.styleFrom(
@@ -546,6 +563,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
                             ? () => onSetFocusModeButtonPressed(FocusMode.auto)
                             : null,
                     onLongPress: () {
+                      // 길게 누르면 포커스 지점 초기화
                       if (controller != null) {
                         controller!.setFocusPoint(null);
                       }
@@ -573,6 +591,9 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
 
   /// Display the control bar with buttons to take pictures and record videos.
   Widget _captureControlRowWidget() {
+    ///---------------------------------------------------------------------------
+    /// 사진 촬영 및 비디오 녹화 제어 버튼 UI 위젯
+    ///---------------------------------------------------------------------------
     final CameraController? cameraController = controller;
 
     return Row(
@@ -585,7 +606,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
               cameraController != null &&
                       cameraController.value.isInitialized &&
                       !cameraController.value.isRecordingVideo
-                  ? onTakePictureButtonPressed
+                  ? onTakePictureButtonPressed // 사진 촬영 버튼
                   : null,
         ),
         IconButton(
@@ -595,23 +616,23 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
               cameraController != null &&
                       cameraController.value.isInitialized &&
                       !cameraController.value.isRecordingVideo
-                  ? onVideoRecordButtonPressed
+                  ? onVideoRecordButtonPressed // 비디오 녹화 시작 버튼
                   : null,
         ),
         IconButton(
           icon:
               cameraController != null &&
                       cameraController.value.isRecordingPaused
-                  ? const Icon(Icons.play_arrow)
-                  : const Icon(Icons.pause),
+                  ? const Icon(Icons.play_arrow) // 녹화가 일시정지된 경우 재생 아이콘
+                  : const Icon(Icons.pause), // 아니면 일시정지 아이콘
           color: Colors.blue,
           onPressed:
               cameraController != null &&
                       cameraController.value.isInitialized &&
                       cameraController.value.isRecordingVideo
                   ? cameraController.value.isRecordingPaused
-                      ? onResumeButtonPressed
-                      : onPauseButtonPressed
+                      ? onResumeButtonPressed // 녹화 재개 버튼
+                      : onPauseButtonPressed // 녹화 일시정지 버튼
                   : null,
         ),
         IconButton(
@@ -621,17 +642,20 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
               cameraController != null &&
                       cameraController.value.isInitialized &&
                       cameraController.value.isRecordingVideo
-                  ? onStopButtonPressed
+                  ? onStopButtonPressed // 녹화 정지 버튼
                   : null,
         ),
         IconButton(
           icon: const Icon(Icons.pause_presentation),
           color:
               cameraController != null && cameraController.value.isPreviewPaused
-                  ? Colors.red
+                  ? Colors
+                      .red // 미리보기가 일시정지된 경우 빨간색
                   : Colors.blue,
           onPressed:
-              cameraController == null ? null : onPausePreviewButtonPressed,
+              cameraController == null
+                  ? null
+                  : onPausePreviewButtonPressed, // 미리보기 일시정지/재개 버튼
         ),
       ],
     );
@@ -639,6 +663,9 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
 
   /// Display a row of toggle to select the camera (or a message if no camera is available).
   Widget _cameraTogglesRowWidget() {
+    ///---------------------------------------------------------------------------
+    /// 카메라 선택 토글 UI 위젯 (전면/후면/외부 카메라 전환)
+    ///---------------------------------------------------------------------------
     final List<Widget> toggles = <Widget>[];
 
     void onChanged(CameraDescription? description) {
@@ -649,12 +676,14 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
       onNewCameraSelected(description);
     }
 
+    // 사용 가능한 카메라가 없는 경우
     if (_cameras.isEmpty) {
       SchedulerBinding.instance.addPostFrameCallback((_) async {
         showInSnackBar('No camera found.');
       });
       return const Text('None');
     } else {
+      // 각 카메라에 대한 라디오 버튼 생성
       for (final CameraDescription cameraDescription in _cameras) {
         toggles.add(
           SizedBox(
@@ -1214,8 +1243,11 @@ class CameraApp extends StatelessWidget {
 
 List<CameraDescription> _cameras = <CameraDescription>[];
 
+///---------------------------------------------------------------------------
+/// 앱 실행 진입점 - 카메라 초기화 및 앱 시작
+///---------------------------------------------------------------------------
 Future<void> main() async {
-  // Fetch the available cameras before initializing the app.
+  // 앱 초기화 전 사용 가능한 카메라 가져오기
   try {
     WidgetsFlutterBinding.ensureInitialized();
     _cameras = await availableCameras();
