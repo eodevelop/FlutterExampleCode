@@ -11,7 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:video_player/video_player.dart';
 
-/// Camera example home widget.
+///---------------------------------------------------------------------------
+/// 메인 카메라 앱 위젯 (앱의 진입점)
+///---------------------------------------------------------------------------
 class CameraExampleHome extends StatefulWidget {
   /// Default Constructor
   const CameraExampleHome({super.key});
@@ -22,15 +24,17 @@ class CameraExampleHome extends StatefulWidget {
   }
 }
 
-/// Returns a suitable camera icon for [direction].
+///---------------------------------------------------------------------------
+/// 카메라 방향에 따른 아이콘 반환
+///---------------------------------------------------------------------------
 IconData getCameraLensIcon(CameraLensDirection direction) {
   switch (direction) {
     case CameraLensDirection.back:
-      return Icons.camera_rear;
+      return Icons.camera_rear; // 후면 카메라
     case CameraLensDirection.front:
-      return Icons.camera_front;
+      return Icons.camera_front; // 전면 카메라
     case CameraLensDirection.external:
-      return Icons.camera;
+      return Icons.camera; // 외부 카메라
   }
   // This enum is from a different package, so a new value could be added at
   // any time. The example should keep working if that happens.
@@ -38,36 +42,55 @@ IconData getCameraLensIcon(CameraLensDirection direction) {
   return Icons.camera;
 }
 
+///---------------------------------------------------------------------------
+/// 오류 로깅 유틸리티 함수
+///---------------------------------------------------------------------------
 void _logError(String code, String? message) {
   // ignore: avoid_print
   print('Error: $code${message == null ? '' : '\nError Message: $message'}');
 }
 
+///---------------------------------------------------------------------------
+/// 카메라 앱의 상태 관리 클래스
+///---------------------------------------------------------------------------
 class _CameraExampleHomeState extends State<CameraExampleHome>
     with WidgetsBindingObserver, TickerProviderStateMixin {
-  CameraController? controller;
-  XFile? imageFile;
-  XFile? videoFile;
-  VideoPlayerController? videoController;
-  VoidCallback? videoPlayerListener;
-  bool enableAudio = true;
-  double _minAvailableExposureOffset = 0.0;
-  double _maxAvailableExposureOffset = 0.0;
-  double _currentExposureOffset = 0.0;
-  late final AnimationController _flashModeControlRowAnimationController;
-  late final CurvedAnimation _flashModeControlRowAnimation;
-  late final AnimationController _exposureModeControlRowAnimationController;
-  late final CurvedAnimation _exposureModeControlRowAnimation;
-  late final AnimationController _focusModeControlRowAnimationController;
-  late final CurvedAnimation _focusModeControlRowAnimation;
-  double _minAvailableZoom = 1.0;
-  double _maxAvailableZoom = 1.0;
-  double _currentScale = 1.0;
-  double _baseScale = 1.0;
+  // 카메라 제어 관련 변수들
+  CameraController? controller; // 카메라 컨트롤러
+  XFile? imageFile; // 촬영된 이미지 파일
+  XFile? videoFile; // 촬영된 비디오 파일
+  VideoPlayerController? videoController; // 비디오 플레이어 컨트롤러
+  VoidCallback? videoPlayerListener; // 비디오 플레이어 리스너
+  bool enableAudio = true; // 오디오 활성화 여부
 
-  // Counting pointers (number of user fingers on screen)
+  // 노출 관련 변수들
+  double _minAvailableExposureOffset = 0.0; // 최소 노출 오프셋
+  double _maxAvailableExposureOffset = 0.0; // 최대 노출 오프셋
+  double _currentExposureOffset = 0.0; // 현재 노출 오프셋
+
+  // UI 애니메이션 컨트롤러들
+  late final AnimationController
+  _flashModeControlRowAnimationController; // 플래시 모드 UI 애니메이션
+  late final CurvedAnimation _flashModeControlRowAnimation;
+  late final AnimationController
+  _exposureModeControlRowAnimationController; // 노출 모드 UI 애니메이션
+  late final CurvedAnimation _exposureModeControlRowAnimation;
+  late final AnimationController
+  _focusModeControlRowAnimationController; // 포커스 모드 UI 애니메이션
+  late final CurvedAnimation _focusModeControlRowAnimation;
+
+  // 줌 관련 변수들
+  double _minAvailableZoom = 1.0; // 최소 줌 레벨
+  double _maxAvailableZoom = 1.0; // 최대 줌 레벨
+  double _currentScale = 1.0; // 현재 줌 스케일
+  double _baseScale = 1.0; // 기본 줌 스케일
+
+  // 멀티터치 감지용 (손가락 개수 카운팅)
   int _pointers = 0;
 
+  ///---------------------------------------------------------------------------
+  /// 상태 초기화 - 애니메이션 컨트롤러 설정
+  ///---------------------------------------------------------------------------
   @override
   void initState() {
     super.initState();
@@ -99,6 +122,9 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     );
   }
 
+  ///---------------------------------------------------------------------------
+  /// 위젯 폐기 시 리소스 정리
+  ///---------------------------------------------------------------------------
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -111,31 +137,38 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     super.dispose();
   }
 
-  // #docregion AppLifecycle
+  ///---------------------------------------------------------------------------
+  /// 앱 라이프사이클 상태 변화 처리 (백그라운드, 포그라운드 전환 등)
+  ///---------------------------------------------------------------------------
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final CameraController? cameraController = controller;
 
-    // App state changed before we got the chance to initialize.
+    // 카메라 초기화 전에는 아무것도 하지 않음
     if (cameraController == null || !cameraController.value.isInitialized) {
       return;
     }
 
+    // 앱이 백그라운드로 갈 때는 카메라 리소스 해제
     if (state == AppLifecycleState.inactive) {
       cameraController.dispose();
-    } else if (state == AppLifecycleState.resumed) {
+    }
+    // 앱이 다시 포그라운드로 돌아오면 카메라 재초기화
+    else if (state == AppLifecycleState.resumed) {
       _initializeCameraController(cameraController.description);
     }
   }
 
-  // #enddocregion AppLifecycle
-
+  ///---------------------------------------------------------------------------
+  /// 메인 UI 빌드 - 카메라 미리보기, 컨트롤 버튼, 썸네일 등 구성
+  ///---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Camera example')),
       body: Column(
         children: <Widget>[
+          // 카메라 미리보기 영역 (확장 가능)
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -143,23 +176,27 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
                 border: Border.all(
                   color:
                       controller != null && controller!.value.isRecordingVideo
-                          ? Colors.redAccent
-                          : Colors.grey,
+                          ? Colors
+                              .redAccent // 녹화 중일 때 빨간색 테두리
+                          : Colors.grey, // 일반 상태일 때 회색 테두리
                   width: 3.0,
                 ),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(1.0),
-                child: Center(child: _cameraPreviewWidget()),
+                child: Center(child: _cameraPreviewWidget()), // 카메라 미리보기 위젯
               ),
             ),
           ),
-          _captureControlRowWidget(),
-          _modeControlRowWidget(),
+          _captureControlRowWidget(), // 사진/비디오 촬영 컨트롤 버튼
+          _modeControlRowWidget(), // 플래시/노출/포커스 모드 컨트롤
           Padding(
             padding: const EdgeInsets.all(5.0),
             child: Row(
-              children: <Widget>[_cameraTogglesRowWidget(), _thumbnailWidget()],
+              children: <Widget>[
+                _cameraTogglesRowWidget(), // 카메라 전환 버튼 (전면/후면)
+                _thumbnailWidget(), // 촬영된 사진/비디오 썸네일
+              ],
             ),
           ),
         ],
@@ -167,10 +204,13 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     );
   }
 
-  /// Display the preview from the camera (or a message if the preview is not available).
+  ///---------------------------------------------------------------------------
+  /// 카메라 미리보기 위젯 - 카메라 화면 표시 및 제스처 처리
+  ///---------------------------------------------------------------------------
   Widget _cameraPreviewWidget() {
     final CameraController? cameraController = controller;
 
+    // 카메라 초기화 안 된 경우 안내 메시지 표시
     if (cameraController == null || !cameraController.value.isInitialized) {
       return const Text(
         'Tap a camera',
@@ -181,18 +221,19 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
         ),
       );
     } else {
+      // 카메라 미리보기 및 제스처 처리
       return Listener(
-        onPointerDown: (_) => _pointers++,
-        onPointerUp: (_) => _pointers--,
+        onPointerDown: (_) => _pointers++, // 터치 손가락 개수 증가
+        onPointerUp: (_) => _pointers--, // 터치 손가락 개수 감소
         child: CameraPreview(
           controller!,
           child: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onScaleStart: _handleScaleStart,
-                onScaleUpdate: _handleScaleUpdate,
-                onTapDown:
+                onScaleStart: _handleScaleStart, // 핀치 줌 시작
+                onScaleUpdate: _handleScaleUpdate, // 핀치 줌 업데이트
+                onTapDown: // 화면 탭하여 초점/노출 설정
                     (TapDownDetails details) =>
                         onViewFinderTap(details, constraints),
               );
@@ -203,21 +244,29 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     }
   }
 
+  ///---------------------------------------------------------------------------
+  /// 핀치 줌 시작 처리 - 기본 스케일 저장
+  ///---------------------------------------------------------------------------
   void _handleScaleStart(ScaleStartDetails details) {
     _baseScale = _currentScale;
   }
 
+  ///---------------------------------------------------------------------------
+  /// 핀치 줌 업데이트 처리 - 카메라 줌 레벨 변경
+  ///---------------------------------------------------------------------------
   Future<void> _handleScaleUpdate(ScaleUpdateDetails details) async {
-    // When there are not exactly two fingers on screen don't scale
+    // 두 손가락이 아닌 경우에는 줌 조작 안함
     if (controller == null || _pointers != 2) {
       return;
     }
 
+    // 줌 레벨 계산 및 제한 (최소/최대 범위 내에서)
     _currentScale = (_baseScale * details.scale).clamp(
       _minAvailableZoom,
       _maxAvailableZoom,
     );
 
+    // 카메라 줌 레벨 설정
     await controller!.setZoomLevel(_currentScale);
   }
 
@@ -624,14 +673,23 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     return Row(children: toggles);
   }
 
+  ///---------------------------------------------------------------------------
+  /// 현재 시간을 밀리초로 반환 (파일명 생성 등에 사용)
+  ///---------------------------------------------------------------------------
   String timestamp() => DateTime.now().millisecondsSinceEpoch.toString();
 
+  ///---------------------------------------------------------------------------
+  /// 스낵바로 메시지 표시 (상태 알림, 오류 등)
+  ///---------------------------------------------------------------------------
   void showInSnackBar(String message) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  ///---------------------------------------------------------------------------
+  /// 카메라 미리보기 탭 처리 - 탭한 위치에 노출/초점 설정
+  ///---------------------------------------------------------------------------
   void onViewFinderTap(TapDownDetails details, BoxConstraints constraints) {
     if (controller == null) {
       return;
@@ -639,35 +697,46 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
 
     final CameraController cameraController = controller!;
 
+    // 탭 위치를 0~1 사이의 상대 좌표로 변환
     final Offset offset = Offset(
       details.localPosition.dx / constraints.maxWidth,
       details.localPosition.dy / constraints.maxHeight,
     );
+
+    // 해당 위치에 노출 및 초점 설정
     cameraController.setExposurePoint(offset);
     cameraController.setFocusPoint(offset);
   }
 
+  ///---------------------------------------------------------------------------
+  /// 새 카메라 선택 처리 (전면/후면 전환 등)
+  ///---------------------------------------------------------------------------
   Future<void> onNewCameraSelected(CameraDescription cameraDescription) async {
     if (controller != null) {
+      // 이미 초기화된 컨트롤러가 있으면 카메라만 변경
       return controller!.setDescription(cameraDescription);
     } else {
+      // 아니면 새로 컨트롤러 초기화
       return _initializeCameraController(cameraDescription);
     }
   }
 
+  ///---------------------------------------------------------------------------
+  /// 카메라 컨트롤러 초기화 - 해상도, 오디오, 노출, 줌 등 설정
+  ///---------------------------------------------------------------------------
   Future<void> _initializeCameraController(
     CameraDescription cameraDescription,
   ) async {
     final CameraController cameraController = CameraController(
       cameraDescription,
-      kIsWeb ? ResolutionPreset.max : ResolutionPreset.medium,
-      enableAudio: enableAudio,
-      imageFormatGroup: ImageFormatGroup.jpeg,
+      kIsWeb ? ResolutionPreset.max : ResolutionPreset.medium, // 웹/앱에 따라 해상도 설정
+      enableAudio: enableAudio, // 오디오 활성화 여부
+      imageFormatGroup: ImageFormatGroup.jpeg, // 이미지 포맷
     );
 
     controller = cameraController;
 
-    // If the controller is updated then update the UI.
+    // 컨트롤러 상태 변화 감지 리스너
     cameraController.addListener(() {
       if (mounted) {
         setState(() {});
@@ -680,9 +749,10 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     });
 
     try {
+      // 카메라 초기화 및 설정값 가져오기
       await cameraController.initialize();
       await Future.wait(<Future<Object?>>[
-        // The exposure mode is currently not supported on the web.
+        // 웹에서는 노출 모드 지원 안함
         ...!kIsWeb
             ? <Future<Object?>>[
               cameraController.getMinExposureOffset().then(
@@ -701,6 +771,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
         ),
       ]);
     } on CameraException catch (e) {
+      // 카메라 권한 관련 예외 처리
       switch (e.code) {
         case 'CameraAccessDenied':
           showInSnackBar('You have denied camera access.');
@@ -728,12 +799,15 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     }
   }
 
+  ///---------------------------------------------------------------------------
+  /// 사진 촬영 버튼 처리
+  ///---------------------------------------------------------------------------
   void onTakePictureButtonPressed() {
     takePicture().then((XFile? file) {
       if (mounted) {
         setState(() {
-          imageFile = file;
-          videoController?.dispose();
+          imageFile = file; // 촬영된 이미지 저장
+          videoController?.dispose(); // 비디오 컨트롤러 정리
           videoController = null;
         });
         if (file != null) {
@@ -743,51 +817,68 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     });
   }
 
+  ///---------------------------------------------------------------------------
+  /// 플래시 모드 버튼 처리 - 모드 선택 UI 표시/숨김
+  ///---------------------------------------------------------------------------
   void onFlashModeButtonPressed() {
     if (_flashModeControlRowAnimationController.value == 1) {
-      _flashModeControlRowAnimationController.reverse();
+      _flashModeControlRowAnimationController.reverse(); // 표시된 상태면 숨김
     } else {
-      _flashModeControlRowAnimationController.forward();
-      _exposureModeControlRowAnimationController.reverse();
+      _flashModeControlRowAnimationController.forward(); // 숨겨진 상태면 표시
+      _exposureModeControlRowAnimationController.reverse(); // 다른 모드 UI는 숨김
       _focusModeControlRowAnimationController.reverse();
     }
   }
 
+  ///---------------------------------------------------------------------------
+  /// 노출 모드 버튼 처리 - 모드 선택 UI 표시/숨김
+  ///---------------------------------------------------------------------------
   void onExposureModeButtonPressed() {
     if (_exposureModeControlRowAnimationController.value == 1) {
-      _exposureModeControlRowAnimationController.reverse();
+      _exposureModeControlRowAnimationController.reverse(); // 표시된 상태면 숨김
     } else {
-      _exposureModeControlRowAnimationController.forward();
-      _flashModeControlRowAnimationController.reverse();
+      _exposureModeControlRowAnimationController.forward(); // 숨겨진 상태면 표시
+      _flashModeControlRowAnimationController.reverse(); // 다른 모드 UI는 숨김
       _focusModeControlRowAnimationController.reverse();
     }
   }
 
+  ///---------------------------------------------------------------------------
+  /// 포커스 모드 버튼 처리 - 모드 선택 UI 표시/숨김
+  ///---------------------------------------------------------------------------
   void onFocusModeButtonPressed() {
     if (_focusModeControlRowAnimationController.value == 1) {
-      _focusModeControlRowAnimationController.reverse();
+      _focusModeControlRowAnimationController.reverse(); // 표시된 상태면 숨김
     } else {
-      _focusModeControlRowAnimationController.forward();
-      _flashModeControlRowAnimationController.reverse();
+      _focusModeControlRowAnimationController.forward(); // 숨겨진 상태면 표시
+      _flashModeControlRowAnimationController.reverse(); // 다른 모드 UI는 숨김
       _exposureModeControlRowAnimationController.reverse();
     }
   }
 
+  ///---------------------------------------------------------------------------
+  /// 오디오 모드 전환 버튼 처리
+  ///---------------------------------------------------------------------------
   void onAudioModeButtonPressed() {
-    enableAudio = !enableAudio;
+    enableAudio = !enableAudio; // 오디오 활성화 상태 토글
     if (controller != null) {
-      onNewCameraSelected(controller!.description);
+      onNewCameraSelected(controller!.description); // 카메라 재초기화
     }
   }
 
+  ///---------------------------------------------------------------------------
+  /// 캡처 방향 잠금 버튼 처리
+  ///---------------------------------------------------------------------------
   Future<void> onCaptureOrientationLockButtonPressed() async {
     try {
       if (controller != null) {
         final CameraController cameraController = controller!;
         if (cameraController.value.isCaptureOrientationLocked) {
+          // 잠금 해제
           await cameraController.unlockCaptureOrientation();
           showInSnackBar('Capture orientation unlocked');
         } else {
+          // 현재 방향으로 잠금
           await cameraController.lockCaptureOrientation();
           showInSnackBar(
             'Capture orientation locked to ${cameraController.value.lockedCaptureOrientation.toString().split('.').last}',
@@ -799,33 +890,48 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     }
   }
 
+  ///---------------------------------------------------------------------------
+  /// 플래시 모드 설정 버튼 처리
+  ///---------------------------------------------------------------------------
   void onSetFlashModeButtonPressed(FlashMode mode) {
     setFlashMode(mode).then((_) {
       if (mounted) {
         setState(() {});
       }
+      // 설정된 모드 표시
       showInSnackBar('Flash mode set to ${mode.toString().split('.').last}');
     });
   }
 
+  ///---------------------------------------------------------------------------
+  /// 노출 모드 설정 버튼 처리
+  ///---------------------------------------------------------------------------
   void onSetExposureModeButtonPressed(ExposureMode mode) {
     setExposureMode(mode).then((_) {
       if (mounted) {
         setState(() {});
       }
+      // 설정된 모드 표시
       showInSnackBar('Exposure mode set to ${mode.toString().split('.').last}');
     });
   }
 
+  ///---------------------------------------------------------------------------
+  /// 포커스 모드 설정 버튼 처리
+  ///---------------------------------------------------------------------------
   void onSetFocusModeButtonPressed(FocusMode mode) {
     setFocusMode(mode).then((_) {
       if (mounted) {
         setState(() {});
       }
+      // 설정된 모드 표시
       showInSnackBar('Focus mode set to ${mode.toString().split('.').last}');
     });
   }
 
+  ///---------------------------------------------------------------------------
+  /// 비디오 녹화 시작 버튼 처리
+  ///---------------------------------------------------------------------------
   void onVideoRecordButtonPressed() {
     startVideoRecording().then((_) {
       if (mounted) {
@@ -834,19 +940,27 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     });
   }
 
+  ///---------------------------------------------------------------------------
+  /// 비디오 녹화 정지 버튼 처리
+  ///---------------------------------------------------------------------------
   void onStopButtonPressed() {
     stopVideoRecording().then((XFile? file) {
       if (mounted) {
         setState(() {});
       }
       if (file != null) {
+        // 녹화 완료 메시지 표시
         showInSnackBar('Video recorded to ${file.path}');
         videoFile = file;
+        // 녹화된 비디오 재생 시작
         _startVideoPlayer();
       }
     });
   }
 
+  ///---------------------------------------------------------------------------
+  /// 카메라 미리보기 일시정지/재개 버튼 처리
+  ///---------------------------------------------------------------------------
   Future<void> onPausePreviewButtonPressed() async {
     final CameraController? cameraController = controller;
 
@@ -855,10 +969,11 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
       return;
     }
 
+    // 미리보기 상태 토글
     if (cameraController.value.isPreviewPaused) {
-      await cameraController.resumePreview();
+      await cameraController.resumePreview(); // 재개
     } else {
-      await cameraController.pausePreview();
+      await cameraController.pausePreview(); // 일시정지
     }
 
     if (mounted) {
@@ -866,6 +981,9 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     }
   }
 
+  ///---------------------------------------------------------------------------
+  /// 비디오 녹화 일시정지 버튼 처리
+  ///---------------------------------------------------------------------------
   void onPauseButtonPressed() {
     pauseVideoRecording().then((_) {
       if (mounted) {
@@ -875,6 +993,9 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     });
   }
 
+  ///---------------------------------------------------------------------------
+  /// 비디오 녹화 재개 버튼 처리
+  ///---------------------------------------------------------------------------
   void onResumeButtonPressed() {
     resumeVideoRecording().then((_) {
       if (mounted) {
@@ -884,6 +1005,9 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     });
   }
 
+  ///---------------------------------------------------------------------------
+  /// 비디오 녹화 시작 기능
+  ///---------------------------------------------------------------------------
   Future<void> startVideoRecording() async {
     final CameraController? cameraController = controller;
 
@@ -893,11 +1017,12 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     }
 
     if (cameraController.value.isRecordingVideo) {
-      // A recording is already started, do nothing.
+      // 이미 녹화중이면 아무 작업 안함
       return;
     }
 
     try {
+      // 비디오 녹화 시작
       await cameraController.startVideoRecording();
     } on CameraException catch (e) {
       _showCameraException(e);
@@ -905,6 +1030,9 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     }
   }
 
+  ///---------------------------------------------------------------------------
+  /// 비디오 녹화 정지 기능 - 녹화된 파일 반환
+  ///---------------------------------------------------------------------------
   Future<XFile?> stopVideoRecording() async {
     final CameraController? cameraController = controller;
 
@@ -913,6 +1041,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     }
 
     try {
+      // 비디오 녹화 정지 및 파일 반환
       return cameraController.stopVideoRecording();
     } on CameraException catch (e) {
       _showCameraException(e);
@@ -920,6 +1049,9 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     }
   }
 
+  ///---------------------------------------------------------------------------
+  /// 비디오 녹화 일시정지 기능
+  ///---------------------------------------------------------------------------
   Future<void> pauseVideoRecording() async {
     final CameraController? cameraController = controller;
 
@@ -928,6 +1060,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     }
 
     try {
+      // 비디오 녹화 일시정지
       await cameraController.pauseVideoRecording();
     } on CameraException catch (e) {
       _showCameraException(e);
@@ -935,6 +1068,9 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     }
   }
 
+  ///---------------------------------------------------------------------------
+  /// 비디오 녹화 재개 기능
+  ///---------------------------------------------------------------------------
   Future<void> resumeVideoRecording() async {
     final CameraController? cameraController = controller;
 
@@ -943,6 +1079,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     }
 
     try {
+      // 비디오 녹화 재개
       await cameraController.resumeVideoRecording();
     } on CameraException catch (e) {
       _showCameraException(e);
